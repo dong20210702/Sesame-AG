@@ -1,16 +1,34 @@
-name: Build Sesame-AG 64-bit APK
+name: Auto Build On Upstream Tag
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # 依然保留手动触发按钮
+  schedule:
+    - cron: '0 */3 * * *' # 每 3 小时自动检查一次原作者是否有新版本发布
 
 jobs:
-  build:
+  check-and-build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Fetch Upstream Latest Tag
+        id: check_tag
+        run: |
+          # 获取原作者仓库的最新 Tag 标签名
+          UPSTREAM_TAG=$(curl -s https://api.github.com/repos/aoguai/Sesame-AG/releases/latest | jq -r .tag_name)
+          echo "Upstream latest tag is: $UPSTREAM_TAG"
+          
+          if [ "$UPSTREAM_TAG" = "null" ] || [ -z "$UPSTREAM_TAG" ]; then
+            # 如果没有 Release 标签，退而求其次获取最新的 Git Tag
+            UPSTREAM_TAG=$(curl -s https://api.github.com/repos/aoguai/Sesame-AG/tags | jq -r '.[0].name')
+          fi
+          
+          echo "final_tag=$UPSTREAM_TAG" >> $GITHUB_OUTPUT
+
+      - name: Checkout Upstream Repository
         uses: actions/checkout@v4
         with:
+          repository: 'aoguai/Sesame-AG'
+          ref: ${{ steps.check_tag.outputs.final_tag }} # 精准锁定原作者最新的那个 Tag 代码
           fetch-depth: 0
           submodules: false
 
@@ -27,9 +45,9 @@ jobs:
         run: |
           keytool -genkey -v -keystore release.keystore -alias temp-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass temppassword -keypass temppassword -dname "CN=Temp, OU=Temp, O=Temp, L=Temp, ST=Temp, C=Temp"
 
-      - name: Build All Variants
+      - name: Build 64-bit Release APK
         run: |
-          ./gradlew clean :app:assemble \
+          ./gradlew clean :app:assembleRelease \
           -x test -x lint -x lintVitalRelease \
           -Pandroid.injected.build.abi=arm64-v8a \
           -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/release.keystore \
@@ -38,17 +56,15 @@ jobs:
           -Pandroid.injected.signing.key.password=temppassword \
           --no-daemon
 
-      - name: Find and Collect All APKs
+      - name: Find and Filter Release APK
         run: |
-          # 创建一个专门存放安装包的文件夹
           mkdir -p $GITHUB_WORKSPACE/apks_to_upload
-          # 全盘搜索所有 .apk 文件，并复制到上面的文件夹中
-          find . -name "*.apk" -type f -exec cp {} $GITHUB_WORKSPACE/apks_to_upload/ \;
-          echo "扫描到的 APK 列表如下："
+          find . -name "*.apk" ! -name "*debug*" -type f -exec cp {} $GITHUB_WORKSPACE/apks_to_upload/ \;
+          echo "--- 最终生成的专属 APK 如下 ---"
           ls -lh $GITHUB_WORKSPACE/apks_to_upload/
 
-      - name: Upload Found APKs
+      - name: Upload Clean Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: Found-APKs
+          name: Sesame-AG-${{ steps.check_tag.outputs.final_tag }}-arm64
           path: apks_to_upload/
