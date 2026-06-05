@@ -1,34 +1,37 @@
-name: Auto Build On Upstream Tag
+name: Auto Build On Upstream Update
 
 on:
-  workflow_dispatch: # 依然保留手动触发按钮
+  workflow_dispatch: # 保持手动触发按钮
   schedule:
-    - cron: '0 */3 * * *' # 每 3 小时自动检查一次原作者是否有新版本发布
+    - cron: '0 */3 * * *' # 每 3 小时自动检查一次原作者是否有更新
 
 jobs:
   check-and-build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Fetch Upstream Latest Tag
-        id: check_tag
+      - name: Fetch Upstream Target Ref
+        id: check_ref
         run: |
-          # 获取原作者仓库的最新 Tag 标签名
+          # 1. 尝试获取最新的 Release Tag
           UPSTREAM_TAG=$(curl -s https://api.github.com/repos/aoguai/Sesame-AG/releases/latest | jq -r .tag_name)
-          echo "Upstream latest tag is: $UPSTREAM_TAG"
           
-          if [ "$UPSTREAM_TAG" = "null" ] || [ -z "$UPSTREAM_TAG" ]; then
-            # 如果没有 Release 标签，退而求其次获取最新的 Git Tag
-            UPSTREAM_TAG=$(curl -s https://api.github.com/repos/aoguai/Sesame-AG/tags | jq -r '.[0].name')
+          if [ "$UPSTREAM_TAG" != "null" ] && [ -not -z "$UPSTREAM_TAG" ]; then
+            echo "找到原作者发布的最新 Release: $UPSTREAM_TAG"
+            echo "final_ref=$UPSTREAM_TAG" >> $GITHUB_OUTPUT
+            echo "artifact_name=Sesame-AG-$UPSTREAM_TAG-arm64" >> $GITHUB_OUTPUT
+          else
+            # 2. 如果没有 Release，则直接拉取主分支最新代码
+            echo "原作者暂未发布 Release，将自动同步主分支最新代码"
+            echo "final_ref=main" >> $GITHUB_OUTPUT
+            echo "artifact_name=Sesame-AG-Latest-Main-arm64" >> $GITHUB_OUTPUT
           fi
-          
-          echo "final_tag=$UPSTREAM_TAG" >> $GITHUB_OUTPUT
 
       - name: Checkout Upstream Repository
         uses: actions/checkout@v4
         with:
           repository: 'aoguai/Sesame-AG'
-          ref: ${{ steps.check_tag.outputs.final_tag }} # 精准锁定原作者最新的那个 Tag 代码
+          ref: ${{ steps.check_ref.outputs.final_ref }} # 动态切换：有 Tag 用 Tag，没 Tag 用主分支
           fetch-depth: 0
           submodules: false
 
@@ -66,5 +69,5 @@ jobs:
       - name: Upload Clean Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: Sesame-AG-${{ steps.check_tag.outputs.final_tag }}-arm64
+          name: ${{ steps.check_ref.outputs.artifact_name }}
           path: apks_to_upload/
