@@ -1,11 +1,11 @@
 name: Build Sesame-AG Release APK
 
 on:
-  workflow_dispatch: # 允许手动触发工作流
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest # 对齐 CI 环境
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'oracle' # 对齐 Oracle JDK 17.0.1
+          distribution: 'oracle'
 
       - name: Cache Gradle packages
         uses: actions/cache@v3
@@ -30,9 +30,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Generate Temporary Keystore
+        # 使用 keytool 动态生成一个临时的 release.keystore 供打包使用
+        run: |
+          keytool -genkey -v -keystore release.keystore -alias temp-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass temppassword -keypass temppassword -dname "CN=Temp, OU=Temp, O=Temp, L=Temp, ST=Temp, C=Temp"
+
       - name: Build Release APK
-        # 执行 release 编译。项目内的 gradle-wrapper 将会自动下载 Gradle 9.4.0-milestone-3 和配置的 SDK 36。
-        run: ./gradlew assembleRelease --no-daemon
+        # 通过 -P 参数将刚才生成的临时签名强制注入到打包流程中覆盖默认配置
+        run: ./gradlew assembleRelease -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/release.keystore -Pandroid.injected.signing.store.password=temppassword -Pandroid.injected.signing.key.alias=temp-alias -Pandroid.injected.signing.key.password=temppassword --no-daemon
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
