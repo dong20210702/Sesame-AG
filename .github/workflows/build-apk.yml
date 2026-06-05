@@ -23,25 +23,24 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Generate Temporary Keystore
-        run: |
-          keytool -genkey -v -keystore release.keystore -alias temp-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass temppassword -keypass temppassword -dname "CN=Temp, OU=Temp, O=Temp, L=Temp, ST=Temp, C=Temp"
-
       - name: Build 64-bit Release APK
-        # 使用 clean 清理缓存，确保任务一定重新执行
-        # 强制指定 arm64-v8a 并直接调用打包任务
         run: |
           ./gradlew clean :app:assembleRelease \
           -x test -x lint -x lintVitalRelease \
           -Pandroid.injected.build.abi=arm64-v8a \
-          -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/release.keystore \
-          -Pandroid.injected.signing.store.password=temppassword \
-          -Pandroid.injected.signing.key.alias=temp-alias \
-          -Pandroid.injected.signing.key.password=temppassword \
           --no-daemon
+
+      - name: Find and Inspect APK Location
+        run: |
+          echo "--- Searching for APK files ---"
+          find . -name "*.apk"
+          echo "--- Inspecting app/build/outputs/apk directory ---"
+          ls -R app/build/outputs/apk/ || echo "Directory not found"
 
       - name: Upload All APKs
         uses: actions/upload-artifact@v4
         with:
           name: Final-APK-Output
-          path: app/build/outputs/apk/**/*.apk
+          path: |
+            app/build/outputs/apk/**/*.apk
+            build/outputs/apk/**/*.apk
