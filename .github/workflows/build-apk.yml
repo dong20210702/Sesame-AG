@@ -38,8 +38,17 @@ jobs:
           -Pandroid.injected.signing.key.password=temppassword \
           --no-daemon
 
-      - name: Upload Entire Outputs Folder
+      - name: Find and Collect All APKs
+        run: |
+          # 创建一个专门存放安装包的文件夹
+          mkdir -p $GITHUB_WORKSPACE/apks_to_upload
+          # 全盘搜索所有 .apk 文件，并复制到上面的文件夹中
+          find . -name "*.apk" -type f -exec cp {} $GITHUB_WORKSPACE/apks_to_upload/ \;
+          echo "扫描到的 APK 列表如下："
+          ls -lh $GITHUB_WORKSPACE/apks_to_upload/
+
+      - name: Upload Found APKs
         uses: actions/upload-artifact@v4
         with:
-          name: All-Build-Outputs
-          path: app/build/outputs/
+          name: Found-APKs
+          path: apks_to_upload/
