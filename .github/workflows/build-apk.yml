@@ -12,9 +12,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Fix Missing Submodule
-        run: git submodule update --init --recursive
+          # 关键点：明确不拉取子模块，避免触发 Git 128 错误
+          submodules: false
 
       - name: Set up Oracle JDK 17
         uses: actions/setup-java@v4
