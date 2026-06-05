@@ -10,6 +10,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          submodules: 'recursive' # 新增这一行，强制拉取所有嵌套的子模块
 
       - name: Set up Oracle JDK 17
         uses: actions/setup-java@v4
