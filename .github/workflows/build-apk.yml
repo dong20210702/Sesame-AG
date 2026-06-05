@@ -1,4 +1,4 @@
-name: Build Sesame-AG 64-bit Release APK
+name: Build Sesame-AG 64-bit APK
 
 on:
   workflow_dispatch:
@@ -27,10 +27,10 @@ jobs:
         run: |
           keytool -genkey -v -keystore release.keystore -alias temp-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass temppassword -keypass temppassword -dname "CN=Temp, OU=Temp, O=Temp, L=Temp, ST=Temp, C=Temp"
 
-      - name: Build 64-bit Release APK
+      - name: Build All Variants (Debug & Release)
         run: |
-          ./gradlew clean :app:assembleRelease \
-          -x test -x lint -x lintVitalRelease \
+          ./gradlew clean :app:assemble \
+          -x test -x lint \
           -Pandroid.injected.build.abi=arm64-v8a \
           -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/release.keystore \
           -Pandroid.injected.signing.store.password=temppassword \
@@ -38,17 +38,8 @@ jobs:
           -Pandroid.injected.signing.key.password=temppassword \
           --no-daemon
 
-      - name: Find and Inspect APK Location
-        run: |
-          echo "--- Searching for APK files ---"
-          find . -name "*.apk"
-          echo "--- Inspecting app/build/outputs/apk directory ---"
-          ls -R app/build/outputs/apk/ || echo "Directory not found"
-
-      - name: Upload All APKs
+      - name: Upload Entire Outputs Folder
         uses: actions/upload-artifact@v4
         with:
-          name: Final-APK-Output
-          path: |
-            app/build/outputs/apk/**/*.apk
-            build/outputs/apk/**/*.apk
+          name: All-Build-Outputs
+          path: app/build/outputs/
