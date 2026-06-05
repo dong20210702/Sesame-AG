@@ -62,3 +62,9 @@ jobs:
           path: |
             app/build/outputs/apk/**/*.apk
             **/build/outputs/apk/**/*.apk
+      - name: Debug and Find APK
+        run: |
+          echo "Listing all files in app/build/outputs/ to find the APK..."
+          find app/build/outputs/ -name "*.apk"
+          echo "--- Directory structure of app/build/ ---"
+          find app/build -maxdepth 3
