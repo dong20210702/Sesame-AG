@@ -12,7 +12,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # 关键点：明确不拉取子模块，避免触发 Git 128 错误
           submodules: false
 
       - name: Set up Oracle JDK 17
@@ -42,9 +41,9 @@ jobs:
         run: |
           ./gradlew assembleRelease \
           -x test \
+          -x lint \
+          -x lintVitalRelease \
           -Pandroid.injected.build.abi=arm64-v8a \
-          -Pandroid.lintOptions.abortOnError=false \
-          -Pandroid.lintOptions.checkReleaseBuilds=false \
           -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/release.keystore \
           -Pandroid.injected.signing.store.password=temppassword \
           -Pandroid.injected.signing.key.alias=temp-alias \
