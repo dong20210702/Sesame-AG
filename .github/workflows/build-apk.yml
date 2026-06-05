@@ -40,9 +40,7 @@ jobs:
       - name: Build 64-bit Release APK
         run: |
           ./gradlew assembleRelease \
-          -x test \
-          -x lint \
-          -x lintVitalRelease \
+          -x test -x lint -x lintVitalRelease \
           -Pandroid.injected.build.abi=arm64-v8a \
           -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/release.keystore \
           -Pandroid.injected.signing.store.password=temppassword \
@@ -50,21 +48,11 @@ jobs:
           -Pandroid.injected.signing.key.password=temppassword \
           --no-daemon
 
-      - name: Locate and Upload APK
-        run: |
-          # 寻找所有生成的 APK 文件并列出路径，以便在日志中确认
-          find . -name "*.apk"
-        
-      - name: Upload APKs
+      - name: List All APKs Found
+        run: find . -name "*.apk"
+
+      - name: Upload All Found APKs
         uses: actions/upload-artifact@v4
         with:
-          name: Sesame-APK-Output
-          path: |
-            app/build/outputs/apk/**/*.apk
-            **/build/outputs/apk/**/*.apk
-      - name: Debug and Find APK
-        run: |
-          echo "Listing all files in app/build/outputs/ to find the APK..."
-          find app/build/outputs/ -name "*.apk"
-          echo "--- Directory structure of app/build/ ---"
-          find app/build -maxdepth 3
+          name: Final-All-APKs
+          path: "**/*.apk"
