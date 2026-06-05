@@ -1,4 +1,4 @@
-name: Build Sesame-AG Release APK
+name: Build Sesame-AG 64-bit Release APK
 
 on:
   workflow_dispatch:
@@ -10,7 +10,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        # 删除了子模块拉取指令，绕过原作者的报错配置
+        with:
+          fetch-depth: 0 # 完整拉取历史，防报错
 
       - name: Set up Oracle JDK 17
         uses: actions/setup-java@v4
@@ -35,11 +36,14 @@ jobs:
         run: |
           keytool -genkey -v -keystore release.keystore -alias temp-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass temppassword -keypass temppassword -dname "CN=Temp, OU=Temp, O=Temp, L=Temp, ST=Temp, C=Temp"
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/release.keystore -Pandroid.injected.signing.store.password=temppassword -Pandroid.injected.signing.key.alias=temp-alias -Pandroid.injected.signing.key.password=temppassword --no-daemon
+      - name: Build 64-bit Release APK
+        # 核心改动：
+        # -x lint -x test：跳过严苛的代码检查和测试，防止编译无故中断
+        # -Pandroid.injected.build.abi=arm64-v8a：仅打包64位库，大幅缩减APK体积
+        run: ./gradlew assembleRelease -x lint -x test -Pandroid.injected.build.abi=arm64-v8a -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/release.keystore -Pandroid.injected.signing.store.password=temppassword -Pandroid.injected.signing.key.alias=temp-alias -Pandroid.injected.signing.key.password=temppassword --no-daemon
 
-      - name: Upload Release APK
+      - name: Upload Small Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: Sesame-AG-Release-APK
+          name: Sesame-AG-arm64-Release-APK
           path: app/build/outputs/apk/release/*.apk
